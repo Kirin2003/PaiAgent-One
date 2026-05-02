@@ -30,8 +30,6 @@ const nodeVariables: Record<string, VariableField[]> = {
     { key: 'output', label: 'Output', type: 'String', description: 'LLM 输出内容', required: false },
   ],
   audioSynth: [
-    { key: 'voice', label: 'Voice', type: 'String', description: '语音类型', required: true },
-    { key: 'speed', label: 'Speed', type: 'Number', description: '语速 (0.5-2.0)', required: false },
     { key: 'output', label: 'Audio URL', type: 'String', description: '生成的音频链接', required: false },
   ],
 };
@@ -202,89 +200,6 @@ export default function NodeConfigPanel() {
           </div>
         </div>
 
-        {/* Variables Section (only for audioSynth) */}
-        {nodeType === 'audioSynth' && (
-          <div style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text-secondary)',
-                marginBottom: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
-              变量
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {variables.map((variable) => (
-                <div
-                  key={variable.key}
-                  style={{
-                    background: 'var(--bg-node)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    padding: 10,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 4,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 500,
-                        color: 'var(--accent-blue)',
-                        fontFamily: 'monospace',
-                      }}
-                    >
-                      {variable.key}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        padding: '2px 6px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 4,
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      {variable.type}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-secondary)',
-                      marginBottom: 6,
-                    }}
-                  >
-                    {variable.description}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={variable.required}
-                      readOnly
-                      style={{ cursor: 'default' }}
-                    />
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {variable.required ? '必要' : '可选'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Node-specific Config */}
         {nodeType === 'llm' && (
           <LLMNodeConfig
@@ -295,75 +210,11 @@ export default function NodeConfigPanel() {
         )}
 
         {nodeType === 'audioSynth' && (
-          <div style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--text-secondary)',
-                marginBottom: 10,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
-              配置
-            </div>
-
-            <div style={{ marginBottom: 12 }}>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 12,
-                  color: 'var(--text-secondary)',
-                  marginBottom: 6,
-                }}
-              >
-                Voice
-              </label>
-              <select
-                value={(config.voice as string) || 'alloy'}
-                onChange={(e) => handleConfigChange('voice', e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  fontSize: 13,
-                  background: 'var(--bg-node)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <option value="alloy">Alloy (中性)</option>
-                <option value="echo">Echo (男声)</option>
-                <option value="fable">Fable (英式)</option>
-                <option value="onyx">Onyx (低沉男声)</option>
-                <option value="nova">Nova (女声)</option>
-                <option value="shimmer">Shimmer (柔和女声)</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 12,
-                  color: 'var(--text-secondary)',
-                  marginBottom: 6,
-                }}
-              >
-                Speed: {config.speed || 1.0}x
-              </label>
-              <input
-                type="range"
-                min="0.5"
-                max="2"
-                step="0.1"
-                value={(config.speed as number) || 1.0}
-                onChange={(e) => handleConfigChange('speed', parseFloat(e.target.value))}
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
+          <AudioSynthNodeConfig
+            config={config}
+            onConfigChange={handleConfigChange}
+            selectedNodeId={selectedNodeId}
+          />
         )}
 
         {nodeType === 'endNode' && (
@@ -1423,6 +1274,489 @@ function LLMNodeConfig({ config, onConfigChange, selectedNodeId }: LLMNodeConfig
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// AudioSynth 节点配置组件
+interface AudioSynthNodeConfigProps {
+  config: Record<string, unknown>;
+  onConfigChange: (key: string, value: unknown) => void;
+  selectedNodeId: string | null;
+}
+
+function AudioSynthNodeConfig({ config, onConfigChange, selectedNodeId }: AudioSynthNodeConfigProps) {
+  const nodes = useWorkflowStore((s) => s.nodes);
+  const edges = useWorkflowStore((s) => s.edges);
+
+  // 获取上游节点的输出变量
+  const upstreamNodesWithOutputs = useMemo(() => {
+    if (!selectedNodeId) return [];
+
+    const visited = new Set<string>();
+    const queue: string[] = [selectedNodeId];
+    const result: { id: string; label: string; type: string; outputs: { key: string; label: string }[] }[] = [];
+
+    const nodeOutputs: Record<string, { key: string; label: string }[]> = {
+      userInput: [{ key: 'user_input', label: '用户输入' }],
+      llm: [{ key: 'output', label: 'LLM输出' }],
+      audioSynth: [{ key: 'output', label: '音频URL' }],
+    };
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      const incomingEdges = edges.filter((e) => e.target === currentId);
+      for (const edge of incomingEdges) {
+        const sourceNode = nodes.find((n) => n.id === edge.source);
+        if (sourceNode && !visited.has(sourceNode.id)) {
+          queue.push(sourceNode.id);
+          const nodeType = sourceNode.type || '';
+          result.push({
+            id: sourceNode.id,
+            label: (sourceNode.data as { label?: string }).label || sourceNode.id,
+            type: nodeType,
+            outputs: nodeOutputs[nodeType] || [{ key: 'output', label: '输出' }],
+          });
+        }
+      }
+    }
+
+    return result;
+  }, [nodes, edges, selectedNodeId]);
+
+  // 输入参数
+  const inputParams = (config.inputParams as OutputParam[]) || [];
+
+  const addInputParam = () => {
+    const newParam: OutputParam = {
+      id: `input_${Date.now()}`,
+      name: '',
+      type: 'input',
+      value: '',
+    };
+    onConfigChange('inputParams', [...inputParams, newParam]);
+  };
+
+  const updateInputParam = (id: string, updates: Partial<OutputParam>) => {
+    const updated = inputParams.map((p) =>
+      p.id === id ? { ...p, ...updates } : p
+    );
+    onConfigChange('inputParams', updated);
+  };
+
+  const removeInputParam = (id: string) => {
+    onConfigChange('inputParams', inputParams.filter((p) => p.id !== id));
+  };
+
+  return (
+    <>
+      {/* 输入配置 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 10,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
+            输入配置
+          </span>
+          <button
+            onClick={addInputParam}
+            style={{
+              padding: '4px 10px',
+              fontSize: 12,
+              background: 'var(--accent-blue)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--radius)',
+              cursor: 'pointer',
+            }}
+          >
+            + 添加
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {inputParams.length === 0 && (
+            <div
+              style={{
+                padding: 12,
+                background: 'var(--bg-node)',
+                border: '1px dashed var(--border)',
+                borderRadius: 'var(--radius)',
+                color: 'var(--text-muted)',
+                fontSize: 12,
+                textAlign: 'center',
+              }}
+            >
+              点击"添加"创建输入参数
+            </div>
+          )}
+
+          {inputParams.map((param, index) => (
+            <div
+              key={param.id}
+              style={{
+                background: 'var(--bg-node)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius)',
+                padding: 10,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 8,
+                }}
+              >
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  输入 {index + 1}
+                </span>
+                <button
+                  onClick={() => removeInputParam(param.id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    padding: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* 参数名 */}
+              <div style={{ marginBottom: 8 }}>
+                <input
+                  type="text"
+                  value={param.name}
+                  onChange={(e) => updateInputParam(param.id, { name: e.target.value })}
+                  placeholder="参数名（如：text）"
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 12,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--text-primary)',
+                  }}
+                />
+              </div>
+
+              {/* 参数类型 */}
+              <div style={{ marginBottom: 8 }}>
+                <select
+                  value={param.type}
+                  onChange={(e) => updateInputParam(param.id, { type: e.target.value as 'input' | 'reference', value: '' })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 12,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <option value="input">输入</option>
+                  <option value="reference">引用</option>
+                </select>
+              </div>
+
+              {/* 参数值 */}
+              {param.type === 'input' ? (
+                <textarea
+                  value={param.value}
+                  onChange={(e) => updateInputParam(param.id, { value: e.target.value })}
+                  placeholder="输入文本内容"
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 12,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--text-primary)',
+                    resize: 'vertical',
+                  }}
+                />
+              ) : (
+                <select
+                  value={param.value}
+                  onChange={(e) => updateInputParam(param.id, { value: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '6px 8px',
+                    fontSize: 12,
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  <option value="">选择变量...</option>
+                  {upstreamNodesWithOutputs.map((node) => (
+                    <optgroup key={node.id} label={node.label}>
+                      {node.outputs.map((output) => (
+                        <option key={`${node.id}.${output.key}`} value={`${node.id}.${output.key}`}>
+                          {output.key} ({output.label})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 音色配置 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          音色配置
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginBottom: 6,
+            }}
+          >
+            Voice
+          </label>
+          <select
+            value={(config.voice as string) || 'Cherry'}
+            onChange={(e) => onConfigChange('voice', e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              fontSize: 13,
+              background: 'var(--bg-node)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            <option value="Cherry">Cherry</option>
+            <option value="Serena">Serena</option>
+            <option value="Ethan">Ethan</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 语言配置 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          语言配置
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginBottom: 6,
+            }}
+          >
+            Language Type
+          </label>
+          <select
+            value={(config.languageType as string) || 'Auto'}
+            onChange={(e) => onConfigChange('languageType', e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              fontSize: 13,
+              background: 'var(--bg-node)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              color: 'var(--text-primary)',
+            }}
+          >
+            <option value="Auto">Auto</option>
+          </select>
+        </div>
+      </div>
+
+      {/* API 配置 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          API 配置
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginBottom: 6,
+            }}
+          >
+            API Key
+          </label>
+          <input
+            type="password"
+            value={(config.apiKey as string) || ''}
+            onChange={(e) => onConfigChange('apiKey', e.target.value)}
+            placeholder="输入 API Key"
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              fontSize: 13,
+              background: 'var(--bg-node)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
+
+        <div>
+          <label
+            style={{
+              display: 'block',
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginBottom: 6,
+            }}
+          >
+            模型名称
+          </label>
+          <input
+            type="text"
+            value={(config.model as string) || 'qwen3-tts-instruct-flash'}
+            onChange={(e) => onConfigChange('model', e.target.value)}
+            placeholder="qwen3-tts-instruct-flash"
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              fontSize: 13,
+              background: 'var(--bg-node)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 输出参数 */}
+      <div style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          输出参数
+        </div>
+
+        <div
+          style={{
+            background: 'var(--bg-node)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            padding: 10,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--accent-blue)',
+                fontFamily: 'monospace',
+              }}
+            >
+              voice_url
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                padding: '2px 6px',
+                background: 'var(--bg-secondary)',
+                borderRadius: 4,
+                color: 'var(--text-muted)',
+              }}
+            >
+              String
+            </span>
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--text-secondary)',
+              marginBottom: 6,
+            }}
+          >
+            生成的音频 URL
+          </div>
         </div>
       </div>
     </>
