@@ -537,13 +537,20 @@ function EndNodeConfig({ config, onConfigChange, selectedNodeId }: EndNodeConfig
   const nodes = useWorkflowStore((s) => s.nodes);
   const edges = useWorkflowStore((s) => s.edges);
 
-  // 获取当前节点之前的所有节点（通过边连接的上游节点）
-  const upstreamNodes = useMemo(() => {
+  // 获取当前节点之前的所有节点及其输出变量
+  const upstreamNodesWithOutputs = useMemo(() => {
     if (!selectedNodeId) return [];
 
     const visited = new Set<string>();
     const queue: string[] = [selectedNodeId];
-    const result: { id: string; label: string; type: string }[] = [];
+    const result: { id: string; label: string; type: string; outputs: { key: string; label: string }[] }[] = [];
+
+    // 定义每种节点类型的输出变量
+    const nodeOutputs: Record<string, { key: string; label: string }[]> = {
+      userInput: [{ key: 'user_input', label: '用户输入' }],
+      llm: [{ key: 'output', label: 'LLM输出' }],
+      audioSynth: [{ key: 'output', label: '音频URL' }],
+    };
 
     while (queue.length > 0) {
       const currentId = queue.shift()!;
@@ -556,10 +563,12 @@ function EndNodeConfig({ config, onConfigChange, selectedNodeId }: EndNodeConfig
         const sourceNode = nodes.find((n) => n.id === edge.source);
         if (sourceNode && !visited.has(sourceNode.id)) {
           queue.push(sourceNode.id);
+          const nodeType = sourceNode.type || '';
           result.push({
             id: sourceNode.id,
             label: (sourceNode.data as { label?: string }).label || sourceNode.id,
-            type: sourceNode.type || '',
+            type: nodeType,
+            outputs: nodeOutputs[nodeType] || [{ key: 'output', label: '输出' }],
           });
         }
       }
@@ -759,11 +768,15 @@ function EndNodeConfig({ config, onConfigChange, selectedNodeId }: EndNodeConfig
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <option value="">选择节点...</option>
-                  {upstreamNodes.map((node) => (
-                    <option key={node.id} value={node.id}>
-                      {node.label} ({nodeTypeLabels[node.type] || node.type})
-                    </option>
+                  <option value="">选择变量...</option>
+                  {upstreamNodesWithOutputs.map((node) => (
+                    <optgroup key={node.id} label={node.label}>
+                      {node.outputs.map((output) => (
+                        <option key={`${node.id}.${output.key}`} value={`${node.id}.${output.key}`}>
+                          {output.key} ({output.label})
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               )}

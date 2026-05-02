@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { useWorkflowStore } from '../store/workflowStore';
-import { executeWorkflow, createWorkflow } from '../api/workflowApi';
+import { executeWorkflow, createWorkflow, updateWorkflow } from '../api/workflowApi';
 
 export function useDebugExecution() {
   const abortRef = useRef<(() => void) | null>(null);
@@ -21,9 +21,13 @@ export function useDebugExecution() {
       startExecution();
 
       try {
-        // Save workflow first if no ID
+        // Always save/update workflow before execution
         let id = workflowId;
-        if (!id) {
+        if (id) {
+          // Update existing workflow with current nodes/edges
+          await updateWorkflow(id, workflowName, nodes, edges);
+        } else {
+          // Create new workflow
           const saved = await createWorkflow(workflowName, nodes, edges);
           id = saved.id!;
           setWorkflowId(id);
