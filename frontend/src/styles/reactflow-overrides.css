@@ -1,0 +1,67 @@
+.react-flow {
+  background: var(--bg-primary) !important;
+}
+
+.react-flow__node {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 13px;
+}
+
+.react-flow__edge-path {
+  stroke: var(--border-light) !important;
+  stroke-width: 2 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--accent-blue) !important;
+}
+
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--border-light) !important;
+  border: 2px solid var(--bg-node) !important;
+}
+
+.react-flow__handle:hover {
+  background: var(--accent-blue) !important;
+}
+
+.react-flow__minimap {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+.react-flow__controls {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: var(--bg-secondary) !important;
+  border-bottom: 1px solid var(--border) !important;
+  fill: var(--text-secondary) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--bg-node-hover) !important;
+}
+
+.react-flow__background pattern circle {
+  fill: var(--border) !important;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+.react-flow__connection-line {
+  stroke: var(--accent-blue) !important;
+  stroke-width: 2 !important;
+}
