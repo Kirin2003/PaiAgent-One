@@ -11,7 +11,11 @@ export default function LLMNode({ id, data }: NodeProps) {
         <div style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
           <div style={{ marginBottom: 4 }}>
             <span style={{ color: 'var(--text-muted)' }}>Model:</span>{' '}
-            <span style={{ color: 'var(--text-primary)' }}>{config.model || 'gpt-3.5-turbo'}</span>
+            <span style={{ color: 'var(--text-primary)' }}>{config.model || '未配置'}</span>
+          </div>
+          <div style={{ marginBottom: 4 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Temp:</span>{' '}
+            <span style={{ color: 'var(--text-primary)' }}>{config.temperature ?? 0.7}</span>
           </div>
           {(config.systemPrompt as string) && (
             <div

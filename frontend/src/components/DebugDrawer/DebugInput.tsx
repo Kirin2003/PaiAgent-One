@@ -69,13 +69,13 @@ export default function DebugInput({ onRun, running }: DebugInputProps) {
         {running ? (
           <>
             <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>
-              \u23F3
+              ⏳
             </span>
-            \u6267\u884C\u4E2D...
+            执行中...
           </>
         ) : (
           <>
-            \u25B6 \u6267\u884C\u5DE5\u4F5C\u6D41
+            执行工作流
           </>
         )}
       </button>

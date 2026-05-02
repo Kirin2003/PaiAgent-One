@@ -34,42 +34,70 @@ public class LLMExecutor implements NodeExecutor {
         Map<String, Object> config = node.getData() != null && node.getData().getConfig() != null
                 ? node.getData().getConfig() : Collections.emptyMap();
 
-        String model = config.getOrDefault("model", openAIConfig.getModel()).toString();
-        String systemPrompt = config.getOrDefault("systemPrompt",
+        // Get model config from node or fallback to global config
+        String model = config.getOrDefault("model", openAIConfig.getModel()) != null
+                ? config.get("model").toString()
+                : openAIConfig.getModel();
+
+        // Get baseUrl from node config or fallback to global config
+        String baseUrl = config.get("baseUrl") != null && !config.get("baseUrl").toString().isEmpty()
+                ? config.get("baseUrl").toString()
+                : openAIConfig.getBaseUrl();
+
+        // Get apiKey from node config or fallback to global config
+        String apiKey = config.get("apiKey") != null && !config.get("apiKey").toString().isEmpty()
+                ? config.get("apiKey").toString()
+                : openAIConfig.getApiKey();
+
+        // Get temperature from node config
+        double temperature = config.get("temperature") != null
+                ? Double.parseDouble(config.get("temperature").toString())
+                : 0.7;
+
+        // Get user prompt from node config
+        String userPrompt = config.getOrDefault("userPrompt",
                 "You are a helpful AI assistant.").toString();
 
-        // Get input from upstream node
-        String userMessage = "";
-        for (String upstreamId : upstreamNodeIds) {
-            Object upstreamOutput = context.getNodeOutput(upstreamId);
-            if (upstreamOutput != null) {
-                userMessage = upstreamOutput.toString();
-                break;
-            }
-        }
+        // Get input params configuration
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> inputParams = config.get("inputParams") != null
+                ? (List<Map<String, Object>>) config.get("inputParams")
+                : Collections.emptyList();
+
+        // Build user message by resolving input params
+        String userMessage = resolveInputParams(userPrompt, inputParams, upstreamNodeIds, context);
 
         // Build OpenAI-compatible request
         List<Map<String, String>> messages = new ArrayList<>();
-        messages.add(Map.of("role", "system", "content", systemPrompt));
         messages.add(Map.of("role", "user", "content", userMessage));
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
         requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.7);
+        requestBody.put("temperature", temperature);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(openAIConfig.getApiKey());
+        headers.setBearerAuth(apiKey);
 
-        String url = openAIConfig.getBaseUrl() + "/v1/chat/completions";
+        // Construct API URL
+        String apiUrl = baseUrl;
+        if (!apiUrl.endsWith("/v1/chat/completions")) {
+            if (apiUrl.endsWith("/")) {
+                apiUrl = apiUrl + "v1/chat/completions";
+            } else if (apiUrl.endsWith("/v1")) {
+                apiUrl = apiUrl + "/chat/completions";
+            } else {
+                apiUrl = apiUrl + "/v1/chat/completions";
+            }
+        }
 
         HttpEntity<String> entity = new HttpEntity<>(
                 objectMapper.writeValueAsString(requestBody), headers);
 
-        log.info("Calling LLM API: {} with model: {}", url, model);
+        log.info("Calling LLM API: {} with model: {}", apiUrl, model);
 
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, entity, String.class);
 
         JsonNode responseJson = objectMapper.readTree(response.getBody());
         String assistantMessage = responseJson
@@ -77,5 +105,39 @@ public class LLMExecutor implements NodeExecutor {
                 .path("message").path("content").asText();
 
         context.setNodeOutput(node.getId(), assistantMessage);
+    }
+
+    private String resolveInputParams(String prompt, List<Map<String, Object>> inputParams,
+                                      List<String> upstreamNodeIds, ExecutionContext context) {
+        String result = prompt;
+
+        for (Map<String, Object> param : inputParams) {
+            String name = (String) param.get("name");
+            String type = (String) param.get("type");
+            String value = (String) param.get("value");
+
+            if (name == null || name.isEmpty()) continue;
+
+            String resolvedValue = "";
+
+            if ("reference".equals(type) && value != null && !value.isEmpty()) {
+                // Parse reference: "nodeId.outputKey"
+                String[] parts = value.split("\\.");
+                String refNodeId = parts[0];
+
+                // Get output from referenced node
+                Object nodeOutput = context.getNodeOutput(refNodeId);
+                if (nodeOutput != null) {
+                    resolvedValue = nodeOutput.toString();
+                }
+            } else if ("input".equals(type) && value != null) {
+                resolvedValue = value;
+            }
+
+            // Replace {{paramName}} with resolved value
+            result = result.replace("{{" + name + "}}", resolvedValue);
+        }
+
+        return result;
     }
 }

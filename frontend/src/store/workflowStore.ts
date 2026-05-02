@@ -31,8 +31,30 @@ const defaultNodes: Node[] = [
     data: {
       label: 'LLM Node',
       config: {
+        inputParams: [],
+        outputVariables: [{ id: 'default_output', name: 'output', type: 'String', description: 'LLM 输出内容' }],
+        baseUrl: '',
+        apiKey: '',
+        temperature: 0.7,
         model: 'gpt-3.5-turbo',
-        systemPrompt: 'You are a podcast script writer. Given a topic, write an engaging 1-minute podcast script.',
+        userPrompt: `# 角色
+你是一位专业的广播节目编辑，负责制作一档名为"AI电台"的节目。你的任务是将用户提供的原始内容改编为适合单口相声播客节目的逐字稿。
+
+# 任务
+将原始内容分解为若干主题或问题，确保每段对话涵盖关键点，并自然过渡。
+
+# 注意点
+确保对话语言口语化、易懂。
+对于专业术语或复杂概念，使用简单明了的语言进行解释，使听众更易理解。
+保持对话节奏轻松、有趣，并加入适当的幽默和互动，以提高听众的参与感。
+注意：我会直接将你生成的内容朗读出来，不要输出口播稿以外的东西，不要带格式，
+
+# 示例
+欢迎收听AI电台，今天咱们的节目一定让你们大开眼界！
+没错！今天的主题绝对精彩，快搬小板凳听好哦！
+那么，今天我们要讨论的内容是……
+
+# 原始内容：{{input}}`,
       },
     },
   },
@@ -143,7 +165,15 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       audioSynth: 'Audio Synthesis',
     };
     const configs: Record<string, Record<string, unknown>> = {
-      llm: { model: 'gpt-3.5-turbo', systemPrompt: 'You are a helpful assistant.' },
+      llm: {
+        inputParams: [],
+        outputVariables: [{ id: 'default_output', name: 'output', type: 'String', description: 'LLM 输出内容' }],
+        baseUrl: '',
+        apiKey: '',
+        temperature: 0.7,
+        model: 'gpt-3.5-turbo',
+        userPrompt: 'You are a helpful assistant.',
+      },
       audioSynth: { voice: 'alloy', speed: 1.0 },
     };
     const newNode: Node = {

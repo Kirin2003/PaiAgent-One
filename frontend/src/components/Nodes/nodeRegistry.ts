@@ -24,7 +24,7 @@ export const draggableNodeTypes: NodeTypeInfo[] = [
   {
     type: 'llm',
     label: 'LLM Node',
-    icon: '\u{1F916}',
+    icon: '🤖',
     color: 'var(--accent-blue)',
     description: 'Large language model',
     category: 'llm',
@@ -32,7 +32,7 @@ export const draggableNodeTypes: NodeTypeInfo[] = [
   {
     type: 'audioSynth',
     label: 'Audio Synthesis',
-    icon: '\u{1F3B5}',
+    icon: '🎵',
     color: 'var(--accent-purple)',
     description: 'Text-to-speech tool',
     category: 'tool',

@@ -63,7 +63,7 @@ export default function DebugDrawer() {
                   lineHeight: 1,
                 }}
               >
-                \u2715
+                ✕
               </button>
             </div>
           </div>

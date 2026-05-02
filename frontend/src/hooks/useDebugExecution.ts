@@ -23,11 +23,19 @@ export function useDebugExecution() {
       try {
         // Always save/update workflow before execution
         let id = workflowId;
-        if (id) {
-          // Update existing workflow with current nodes/edges
-          await updateWorkflow(id, workflowName, nodes, edges);
-        } else {
-          // Create new workflow
+        try {
+          if (id) {
+            // Update existing workflow with current nodes/edges
+            await updateWorkflow(id, workflowName, nodes, edges);
+          } else {
+            // Create new workflow
+            const saved = await createWorkflow(workflowName, nodes, edges);
+            id = saved.id!;
+            setWorkflowId(id);
+          }
+        } catch (saveError) {
+          // If update fails (e.g., workflow not found), create a new one
+          console.warn('Failed to update workflow, creating new one:', saveError);
           const saved = await createWorkflow(workflowName, nodes, edges);
           id = saved.id!;
           setWorkflowId(id);
