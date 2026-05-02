@@ -11,6 +11,8 @@ import com.alibaba.dashscope.utils.Constants;
 import com.paiagent.one.engine.ExecutionContext;
 import com.paiagent.one.engine.NodeExecutor;
 import com.paiagent.one.model.dto.NodeDTO;
+import com.paiagent.one.service.MinioService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +23,10 @@ import java.util.Map;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class AudioSynthExecutor implements NodeExecutor {
+
+    private final MinioService minioService;
 
     @Override
     public String getType() {
@@ -81,11 +86,16 @@ public class AudioSynthExecutor implements NodeExecutor {
         // Call TTS API
         String audioUrl = callTtsApi(apiKey, model, text, voice, languageType);
 
-        log.info("AudioSynth: Generated audio URL: {}", audioUrl);
+        log.info("AudioSynth: Generated audio URL from TTS: {}", audioUrl);
 
-        // Set output with voice_url
+        // Upload to MinIO
+        String minioUrl = minioService.uploadAudioFromUrl(audioUrl, "tts_audio.wav");
+
+        log.info("AudioSynth: Uploaded to MinIO: {}", minioUrl);
+
+        // Set output with voice_url (MinIO URL)
         Map<String, Object> output = new HashMap<>();
-        output.put("voice_url", audioUrl);
+        output.put("voice_url", minioUrl);
         output.put("text", text);
 
         context.setNodeOutput(node.getId(), output);

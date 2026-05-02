@@ -25,3 +25,10 @@ openai:
   api-key: ${OPENAI_API_KEY:sk-placeholder}
   base-url: ${OPENAI_BASE_URL:https://api.openai.com}
   model: ${OPENAI_MODEL:gpt-3.5-turbo}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ${MINIO_BUCKET_NAME:paiagent}
+  public-url: ${MINIO_PUBLIC_URL:http://localhost:9000}
