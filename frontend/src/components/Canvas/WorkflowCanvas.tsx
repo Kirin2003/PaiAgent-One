@@ -19,6 +19,7 @@ export default function WorkflowCanvas() {
   const onEdgesChange = useWorkflowStore((s) => s.onEdgesChange);
   const onConnect = useWorkflowStore((s) => s.onConnect);
   const addNode = useWorkflowStore((s) => s.addNode);
+  const setSelectedNodeId = useWorkflowStore((s) => s.setSelectedNodeId);
 
   const { onDragOver, onDrop, setReactFlowInstance } = useDnD(addNode);
 
@@ -28,6 +29,17 @@ export default function WorkflowCanvas() {
     },
     [setReactFlowInstance]
   );
+
+  const onNodeClick = useCallback(
+    (_event: React.MouseEvent, node: Node) => {
+      setSelectedNodeId(node.id);
+    },
+    [setSelectedNodeId]
+  );
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeId(null);
+  }, [setSelectedNodeId]);
 
   return (
     <div style={{ flex: 1, height: '100%' }}>
@@ -41,6 +53,8 @@ export default function WorkflowCanvas() {
         onInit={onInit}
         onDragOver={onDragOver}
         onDrop={onDrop}
+        onNodeClick={onNodeClick}
+        onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         defaultEdgeOptions={{ type: 'smoothstep' }}

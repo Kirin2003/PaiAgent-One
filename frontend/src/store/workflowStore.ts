@@ -16,7 +16,13 @@ const defaultNodes: Node[] = [
     id: 'n1',
     type: 'userInput',
     position: { x: 50, y: 200 },
-    data: { label: 'User Input', config: {} },
+    data: {
+      label: 'User Input',
+      config: {
+        promptLabel: 'Enter your topic...',
+        defaultValue: '',
+      },
+    },
   },
   {
     id: 'n2',
@@ -34,13 +40,25 @@ const defaultNodes: Node[] = [
     id: 'n3',
     type: 'audioSynth',
     position: { x: 700, y: 200 },
-    data: { label: 'Audio Synthesis', config: {} },
+    data: {
+      label: 'Audio Synthesis',
+      config: {
+        voice: 'alloy',
+        speed: 1.0,
+      },
+    },
   },
   {
     id: 'n4',
     type: 'endNode',
     position: { x: 1050, y: 220 },
-    data: { label: 'End', config: {} },
+    data: {
+      label: 'End',
+      config: {
+        outputParams: [],
+        responseContent: '',
+      },
+    },
   },
 ];
 
@@ -78,6 +96,7 @@ interface WorkflowStore {
   workflowName: string;
   nodes: Node[];
   edges: Edge[];
+  selectedNodeId: string | null;
   debugDrawerOpen: boolean;
   executionState: ExecutionState;
 
@@ -88,6 +107,7 @@ interface WorkflowStore {
   updateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
   setWorkflow: (id: number, name: string, nodes: Node[], edges: Edge[]) => void;
   setWorkflowId: (id: number) => void;
+  setSelectedNodeId: (nodeId: string | null) => void;
   toggleDebugDrawer: () => void;
   setDebugDrawerOpen: (open: boolean) => void;
 
@@ -103,6 +123,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   workflowName: 'AI Podcast Generator',
   nodes: defaultNodes,
   edges: defaultEdges,
+  selectedNodeId: null,
   debugDrawerOpen: false,
   executionState: initialExecutionState,
 
@@ -123,7 +144,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
     };
     const configs: Record<string, Record<string, unknown>> = {
       llm: { model: 'gpt-3.5-turbo', systemPrompt: 'You are a helpful assistant.' },
-      audioSynth: {},
+      audioSynth: { voice: 'alloy', speed: 1.0 },
     };
     const newNode: Node = {
       id,
@@ -148,6 +169,9 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
   setWorkflowId: (id) => {
     set({ workflowId: id });
+  },
+  setSelectedNodeId: (nodeId) => {
+    set({ selectedNodeId: nodeId });
   },
   toggleDebugDrawer: () => {
     set({ debugDrawerOpen: !get().debugDrawerOpen });

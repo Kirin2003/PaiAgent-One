@@ -2,6 +2,8 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import BaseNode from './BaseNode';
 
 export default function AudioSynthNode({ id, data }: NodeProps) {
+  const config = (data as { config?: Record<string, unknown> }).config || {};
+
   return (
     <>
       <Handle type="target" position={Position.Left} />
@@ -17,10 +19,15 @@ export default function AudioSynthNode({ id, data }: NodeProps) {
               fontWeight: 500,
             }}
           >
-            Mock
+            TTS
           </span>
-          <div style={{ marginTop: 6, color: 'var(--text-muted)' }}>
-            TTS synthesis placeholder
+          <div style={{ marginTop: 6, fontSize: 11 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Voice:</span>{' '}
+            <span style={{ color: 'var(--text-primary)' }}>{config.voice || 'alloy'}</span>
+          </div>
+          <div style={{ fontSize: 11 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Speed:</span>{' '}
+            <span style={{ color: 'var(--text-primary)' }}>{config.speed || 1.0}x</span>
           </div>
         </div>
       </BaseNode>

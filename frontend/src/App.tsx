@@ -1,6 +1,7 @@
 import Sidebar from './components/Sidebar/Sidebar';
 import WorkflowCanvas from './components/Canvas/WorkflowCanvas';
 import DebugDrawer from './components/DebugDrawer/DebugDrawer';
+import NodeConfigPanel from './components/NodeConfigPanel/NodeConfigPanel';
 import { useWorkflowStore } from './store/workflowStore';
 import { ReactFlowProvider } from '@xyflow/react';
 
@@ -61,6 +62,9 @@ function App() {
             <DebugDrawer />
           </div>
         </div>
+
+        {/* Right Node Config Panel */}
+        <NodeConfigPanel />
       </div>
     </ReactFlowProvider>
   );
