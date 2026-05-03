@@ -2,7 +2,7 @@ spring:
   application:
     name: paiagent-one
   datasource:
-    url: jdbc:h2:mem:paiagent
+    url: jdbc:h2:file:./data/paiagent;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:

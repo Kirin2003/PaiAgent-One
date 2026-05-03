@@ -86,6 +86,7 @@ export function executeWorkflow(
 
       const decoder = new TextDecoder();
       let buffer = '';
+      let currentEvent = '';
 
       while (true) {
         const { done, value } = await reader.read();
@@ -95,7 +96,6 @@ export function executeWorkflow(
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
-        let currentEvent = '';
         for (const line of lines) {
           if (line.startsWith('event:')) {
             currentEvent = line.slice(6).trim();
@@ -103,7 +103,7 @@ export function executeWorkflow(
             const dataStr = line.slice(5).trim();
             try {
               const data = JSON.parse(dataStr);
-              onEvent({ ...data, event: data.event || currentEvent });
+              onEvent({ ...data, event: currentEvent || data.event });
             } catch {
               // ignore parse errors
             }
