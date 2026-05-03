@@ -10,6 +10,7 @@ import {
   addEdge,
 } from '@xyflow/react';
 import type { ExecutionState } from '../types/workflow';
+import { listWorkflows, createWorkflow, updateWorkflow, nodesFromBackend } from '../api/workflowApi';
 
 const defaultNodes: Node[] = [
   {
@@ -65,8 +66,10 @@ const defaultNodes: Node[] = [
     data: {
       label: 'Audio Synthesis',
       config: {
-        voice: 'alloy',
-        speed: 1.0,
+        inputParams: [],
+        voice: 'Cherry',
+        model: 'qwen3-tts-instruct-flash',
+        apiKey: '',
       },
     },
   },
@@ -113,6 +116,13 @@ export const backendToNodeType: Record<string, string> = {
   end: 'endNode',
 };
 
+interface WorkflowInfo {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface WorkflowStore {
   workflowId: number | null;
   workflowName: string;
@@ -121,6 +131,8 @@ interface WorkflowStore {
   selectedNodeId: string | null;
   debugDrawerOpen: boolean;
   executionState: ExecutionState;
+  workflows: WorkflowInfo[];
+  hasUnsavedChanges: boolean;
 
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
@@ -129,9 +141,17 @@ interface WorkflowStore {
   updateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
   setWorkflow: (id: number, name: string, nodes: Node[], edges: Edge[]) => void;
   setWorkflowId: (id: number) => void;
+  setWorkflowName: (name: string) => void;
   setSelectedNodeId: (nodeId: string | null) => void;
   toggleDebugDrawer: () => void;
   setDebugDrawerOpen: (open: boolean) => void;
+
+  loadWorkflows: () => Promise<void>;
+  saveCurrentWorkflow: () => Promise<void>;
+  saveAsNewWorkflow: (name: string) => Promise<void>;
+  loadWorkflowById: (id: number) => Promise<void>;
+  deleteWorkflowById: (id: number) => Promise<void>;
+  newWorkflow: () => void;
 
   startExecution: () => void;
   handleExecutionEvent: (event: { event: string; nodeId?: string; nodeType?: string; label?: string; output?: unknown; error?: string }) => void;
@@ -142,21 +162,23 @@ let nodeIdCounter = 10;
 
 export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   workflowId: null,
-  workflowName: 'AI Podcast Generator',
+  workflowName: 'Untitled Workflow',
   nodes: defaultNodes,
   edges: defaultEdges,
   selectedNodeId: null,
   debugDrawerOpen: false,
   executionState: initialExecutionState,
+  workflows: [],
+  hasUnsavedChanges: false,
 
   onNodesChange: (changes) => {
-    set({ nodes: applyNodeChanges(changes, get().nodes) });
+    set({ nodes: applyNodeChanges(changes, get().nodes), hasUnsavedChanges: true });
   },
   onEdgesChange: (changes) => {
-    set({ edges: applyEdgeChanges(changes, get().edges) });
+    set({ edges: applyEdgeChanges(changes, get().edges), hasUnsavedChanges: true });
   },
   onConnect: (connection) => {
-    set({ edges: addEdge({ ...connection, type: 'smoothstep' }, get().edges) });
+    set({ edges: addEdge({ ...connection, type: 'smoothstep' }, get().edges), hasUnsavedChanges: true });
   },
   addNode: (type, position) => {
     const id = `n${++nodeIdCounter}`;
@@ -174,7 +196,12 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         model: 'gpt-3.5-turbo',
         userPrompt: 'You are a helpful assistant.',
       },
-      audioSynth: { voice: 'alloy', speed: 1.0 },
+      audioSynth: {
+        inputParams: [],
+        voice: 'Cherry',
+        model: 'qwen3-tts-instruct-flash',
+        apiKey: '',
+      },
     };
     const newNode: Node = {
       id,
@@ -185,20 +212,24 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
         config: configs[type] || {},
       },
     };
-    set({ nodes: [...get().nodes, newNode] });
+    set({ nodes: [...get().nodes, newNode], hasUnsavedChanges: true });
   },
   updateNodeData: (nodeId, data) => {
     set({
       nodes: get().nodes.map((n) =>
         n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
       ),
+      hasUnsavedChanges: true,
     });
   },
   setWorkflow: (id, name, nodes, edges) => {
-    set({ workflowId: id, workflowName: name, nodes, edges });
+    set({ workflowId: id, workflowName: name, nodes, edges, hasUnsavedChanges: false });
   },
   setWorkflowId: (id) => {
     set({ workflowId: id });
+  },
+  setWorkflowName: (name) => {
+    set({ workflowName: name, hasUnsavedChanges: true });
   },
   setSelectedNodeId: (nodeId) => {
     set({ selectedNodeId: nodeId });
@@ -208,6 +239,93 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
   },
   setDebugDrawerOpen: (open) => {
     set({ debugDrawerOpen: open });
+  },
+
+  loadWorkflows: async () => {
+    try {
+      const workflows = await listWorkflows();
+      set({ workflows: workflows.map(w => ({ id: w.id, name: w.name, createdAt: w.createdAt, updatedAt: w.updatedAt })) });
+    } catch (e) {
+      console.error('Failed to load workflows:', e);
+    }
+  },
+
+  saveCurrentWorkflow: async () => {
+    const { workflowId, workflowName, nodes, edges } = get();
+    try {
+      if (workflowId) {
+        await updateWorkflow(workflowId, workflowName, nodes, edges);
+      } else {
+        const created = await createWorkflow(workflowName, nodes, edges);
+        set({ workflowId: created.id, hasUnsavedChanges: false });
+      }
+      set({ hasUnsavedChanges: false });
+      // Reload workflow list
+      const workflows = await listWorkflows();
+      set({ workflows: workflows.map(w => ({ id: w.id, name: w.name, createdAt: w.createdAt, updatedAt: w.updatedAt })) });
+    } catch (e) {
+      console.error('Failed to save workflow:', e);
+      throw e;
+    }
+  },
+
+  saveAsNewWorkflow: async (name: string) => {
+    const { nodes, edges } = get();
+    try {
+      const created = await createWorkflow(name, nodes, edges);
+      set({ workflowId: created.id, workflowName: name, hasUnsavedChanges: false });
+      // Reload workflow list
+      const workflows = await listWorkflows();
+      set({ workflows: workflows.map(w => ({ id: w.id, name: w.name, createdAt: w.createdAt, updatedAt: w.updatedAt })) });
+    } catch (e) {
+      console.error('Failed to save workflow:', e);
+      throw e;
+    }
+  },
+
+  loadWorkflowById: async (id: number) => {
+    try {
+      const { getWorkflow } = await import('../api/workflowApi');
+      const workflow = await getWorkflow(id);
+      const loadedNodes = nodesFromBackend(workflow.nodes);
+      set({
+        workflowId: workflow.id,
+        workflowName: workflow.name,
+        nodes: loadedNodes,
+        edges: workflow.edges,
+        hasUnsavedChanges: false,
+      });
+    } catch (e) {
+      console.error('Failed to load workflow:', e);
+      throw e;
+    }
+  },
+
+  deleteWorkflowById: async (id: number) => {
+    try {
+      const { deleteWorkflow } = await import('../api/workflowApi');
+      await deleteWorkflow(id);
+      // If deleted current workflow, reset
+      if (get().workflowId === id) {
+        set({ workflowId: null, workflowName: 'Untitled Workflow', nodes: defaultNodes, edges: defaultEdges, hasUnsavedChanges: false });
+      }
+      // Reload workflow list
+      const workflows = await listWorkflows();
+      set({ workflows: workflows.map(w => ({ id: w.id, name: w.name, createdAt: w.createdAt, updatedAt: w.updatedAt })) });
+    } catch (e) {
+      console.error('Failed to delete workflow:', e);
+      throw e;
+    }
+  },
+
+  newWorkflow: () => {
+    set({
+      workflowId: null,
+      workflowName: 'Untitled Workflow',
+      nodes: defaultNodes,
+      edges: defaultEdges,
+      hasUnsavedChanges: false,
+    });
   },
 
   startExecution: () => {

@@ -8,8 +8,8 @@ export default function AudioPlayer({ audioUrl, text }: AudioPlayerProps) {
     <div
       style={{
         padding: '12px 16px',
-        borderTop: '1px solid var(--border)',
-        background: 'var(--bg-primary)',
+        background: 'var(--bg-node)',
+        borderRadius: 'var(--radius)',
       }}
     >
       <div
@@ -22,7 +22,7 @@ export default function AudioPlayer({ audioUrl, text }: AudioPlayerProps) {
           marginBottom: 8,
         }}
       >
-        AI Podcast
+        🎵 Audio Output
       </div>
       {text && (
         <div
@@ -31,7 +31,7 @@ export default function AudioPlayer({ audioUrl, text }: AudioPlayerProps) {
             color: 'var(--text-secondary)',
             marginBottom: 10,
             padding: '8px 10px',
-            background: 'var(--bg-node)',
+            background: 'var(--bg-secondary)',
             borderRadius: 'var(--radius)',
             maxHeight: 80,
             overflow: 'auto',
